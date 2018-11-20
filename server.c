@@ -159,12 +159,13 @@ char* printContent(char *files)
     for(int i=0; i<strlen(findfile[1]); i++) {
         findfile[1][i]=findfile[1][i+1];
     }
+    //printf("findfile: %s\n",findfile[1]);
 
     result = stat( findfile[1], &buf );
     //if id directory, print files under it
     if(__S_IFDIR & buf.st_mode) {
         checkFile(findfile[1],filetype[1]);
-    } else if(__S_IFREG & buf.st_mode) {
+    } else { /* if(__S_IFREG & buf.st_mode)*/
         //get file type
         for(i=0; i<(strlen(findfile[1])); i++) {
             if(findfile[1][i]=='.') {
@@ -175,7 +176,7 @@ char* printContent(char *files)
                 jj++;
             }
         }
-        printf("%s\n",filetype[1]);
+        //printf("filetype: %s\n",filetype[1]);
 
         if(strcmp(filetype[1],"htm")!=0 && strcmp(filetype[1],"html")!=0 && strcmp(filetype[1],"css")!=0 && strcmp(filetype[1],"h")!=0 && strcmp(filetype[1],"hh")!=0 && strcmp(filetype[1],"c")!=0 && strcmp(filetype[1],"cc")!=0 && strcmp(filetype[1],"json")!=0) {
             hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
@@ -201,47 +202,48 @@ char *checkFile(char *findfile,char *filetype)
     address = getcwd(NULL,0);
     dir = opendir(address);
     while((dent=readdir(dir))!=NULL) {
-        if(strcmp(dent->d_name,findfile)==0)
+        if(strcmp(dent->d_name,findfile)==0) {
             result = stat(findfile, &buf);
-        if(__S_IFDIR & buf.st_mode) {
-            dir = opendir(findfile);
-            hell = "HTTP/1.x 200 OK\r\nContent-Type: directory\r\nServer: httpserver/1.x\r\n\r\n";
-            strcpy(hello,hell);
-            while((dent=readdir(dir))!=NULL) {
-                if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0) {
-                    strcat(hello,dent->d_name);
-                    strcat(hello," ");
+            if(__S_IFDIR & buf.st_mode) {
+                dir = opendir(findfile);
+                hell = "HTTP/1.x 200 OK\r\nContent-Type: directory\r\nServer: httpserver/1.x\r\n\r\n";
+                strcpy(hello,hell);
+                while((dent=readdir(dir))!=NULL) {
+                    if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0) {
+                        strcat(hello,dent->d_name);
+                        strcat(hello," ");
+                    }
                 }
-            }
-            return hello;
-        } else if(__S_IFREG & buf.st_mode) {
-            infile = fopen(findfile, "r");
-            // Get the number of bytes
-            fseek(infile, 0L, SEEK_END);
-            numbytes = ftell(infile);
-            // reset the file position indicator to the beginning of the file
-            fseek(infile, 0L, SEEK_SET);
-            // grab sufficient memory for the buffer to hold the text
-            buffer = (char*)calloc(numbytes, sizeof(char));
-            // copy all the text into the buffer
-            fread(buffer, sizeof(char), numbytes, infile);
-            fclose(infile);
+                return hello;
+            } else if(__S_IFREG & buf.st_mode) {
+                infile = fopen(findfile, "r");
+                // Get the number of bytes
+                fseek(infile, 0L, SEEK_END);
+                numbytes = ftell(infile);
+                // reset the file position indicator to the beginning of the file
+                fseek(infile, 0L, SEEK_SET);
+                // grab sufficient memory for the buffer to hold the text
+                buffer = (char*)calloc(numbytes, sizeof(char));
+                // copy all the text into the buffer
+                fread(buffer, sizeof(char), numbytes, infile);
+                fclose(infile);
 
-            if(strcmp(filetype,"htm")==0 || strcmp(filetype,"html")==0) {
-                hell = "HTTP/1.x 200 OK\r\nContent-Type: text/html\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype,"css")==0) {
-                hell = "HTTP/1.x 200 OK\r\nContent-Type: text/css\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype,"h")==0 || strcmp(filetype,"hh")==0) {
-                hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-h\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype,"c")==0 || strcmp(filetype,"cc")==0) {
-                hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-c\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype,"json")==0) {
-                hell = "HTTP/1.x 200 OK\r\nContent-Type: application/json\r\nServer: httpserver/1.x\r\n\r\n";
+                if(strcmp(filetype,"htm")==0 || strcmp(filetype,"html")==0) {
+                    hell = "HTTP/1.x 200 OK\r\nContent-Type: text/html\r\nServer: httpserver/1.x\r\n\r\n";
+                } else if(strcmp(filetype,"css")==0) {
+                    hell = "HTTP/1.x 200 OK\r\nContent-Type: text/css\r\nServer: httpserver/1.x\r\n\r\n";
+                } else if(strcmp(filetype,"h")==0 || strcmp(filetype,"hh")==0) {
+                    hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-h\r\nServer: httpserver/1.x\r\n\r\n";
+                } else if(strcmp(filetype,"c")==0 || strcmp(filetype,"cc")==0) {
+                    hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-c\r\nServer: httpserver/1.x\r\n\r\n";
+                } else if(strcmp(filetype,"json")==0) {
+                    hell = "HTTP/1.x 200 OK\r\nContent-Type: application/json\r\nServer: httpserver/1.x\r\n\r\n";
+                }
+                strcpy(hello,hell);
+                strcat(hello,buffer);
+                free(buffer);
+                return hello;
             }
-            strcpy(hello,hell);
-            strcat(hello,buffer);
-            free(buffer);
-            return hello;
         }
         /*else {
         	result = stat(dent->d_name, &buf);
