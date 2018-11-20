@@ -9,10 +9,11 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <sys/stat.h>
-#define PORT 1234
-#define MAX_QUEUE 30
+#define PORT 8080
+#define MAX_QUEUE 50
 
-char* printContent(char *files);
+char* printContent(char *findfile);
+char *checkFile(char *files, char *filetype);
 char hello[0xfff];
 char Queue[MAX_QUEUE][500];
 int front = -1, rear = -1;
@@ -125,14 +126,10 @@ int main(int argc, char *argv[])
 
 char* printContent(char *files)
 {
-    FILE    *infile;
-    char    *buffer;
-    long    numbytes;
-
     //get request file or directory
-    char findfile[4][128];
+    char findfile[4][128]= {0};
     int i, j=0, ctr=0;
-    for(i=0; i<=(strlen(files)); i++) {
+    for(i=0; i<(strlen(files)); i++) {
         if(files[i]==' ') {
             ctr++;
             j=0;
@@ -141,17 +138,6 @@ char* printContent(char *files)
             j++;
         }
     }
-    /*
-        DIR *dir;
-        struct dirent *dent;
-        dir = opendir("testdir");
-        while((dent=readdir(dir))!=NULL){
-    	    printf(dent->d_name);
-    	    printf("\n");
-    	    if(dent->d_name == files)
-    		    infile = fopen(files,"r");
-        }
-    */
 
     char *hell;
     if(findfile[1][0]!='/') {
@@ -165,22 +151,22 @@ char* printContent(char *files)
     }
 
     struct stat buf;
-    int result, determine=0;
-    char filetype[2][10];
+    int result;
+    char filetype[2][10]= {0};
     int cctr=0, jj=0;
-    DIR *dir;
-    struct dirent *dent;
 
+    //delete '/'
     for(int i=0; i<strlen(findfile[1]); i++) {
         findfile[1][i]=findfile[1][i+1];
     }
 
     result = stat( findfile[1], &buf );
+    //if id directory, print files under it
     if(__S_IFDIR & buf.st_mode) {
-        determine=1;
+        checkFile(findfile[1],filetype[1]);
     } else if(__S_IFREG & buf.st_mode) {
         //get file type
-        for(i=0; i<=(strlen(findfile[1])); i++) {
+        for(i=0; i<(strlen(findfile[1])); i++) {
             if(findfile[1][i]=='.') {
                 cctr++;
                 jj=0;
@@ -189,15 +175,36 @@ char* printContent(char *files)
                 jj++;
             }
         }
+        printf("%s\n",filetype[1]);
+
+        if(strcmp(filetype[1],"htm")!=0 && strcmp(filetype[1],"html")!=0 && strcmp(filetype[1],"css")!=0 && strcmp(filetype[1],"h")!=0 && strcmp(filetype[1],"hh")!=0 && strcmp(filetype[1],"c")!=0 && strcmp(filetype[1],"cc")!=0 && strcmp(filetype[1],"json")!=0) {
+            hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
+            strcpy(hello,hell);
+            return hello;
+        } else checkFile(findfile[1],filetype[1]);
     }
 
-    if(strcmp(filetype[1],"htm")!=0 && strcmp(filetype[1],"html")!=0 && strcmp(filetype[1],"css")!=0 && strcmp(filetype[1],"h")!=0 && strcmp(filetype[1],"hh")!=0 && strcmp(filetype[1],"c")!=0 && strcmp(filetype[1],"cc")!=0 && strcmp(filetype[1],"json")!=0 && determine==0) {
-        hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
-        strcpy(hello,hell);
-        return hello;
-    } else {
-        if(determine==1) {
-            dir = opendir(findfile[1]);
+}
+
+char *checkFile(char *findfile,char *filetype)
+{
+    FILE *infile;
+    char *buffer;
+    long numbytes;
+    struct stat buf;
+    int result;
+    DIR *dir;
+    struct dirent *dent;
+    char *hell;
+    char *address;
+
+    address = getcwd(NULL,0);
+    dir = opendir(address);
+    while((dent=readdir(dir))!=NULL) {
+        if(strcmp(dent->d_name,findfile)==0)
+            result = stat(findfile, &buf);
+        if(__S_IFDIR & buf.st_mode) {
+            dir = opendir(findfile);
             hell = "HTTP/1.x 200 OK\r\nContent-Type: directory\r\nServer: httpserver/1.x\r\n\r\n";
             strcpy(hello,hell);
             while((dent=readdir(dir))!=NULL) {
@@ -207,14 +214,8 @@ char* printContent(char *files)
                 }
             }
             return hello;
-        }
-        infile = fopen(findfile[1], "r");
-
-        if(infile == NULL) {
-            hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
-            strcpy(hello,hell);
-            return hello;
-        } else {
+        } else if(__S_IFREG & buf.st_mode) {
+            infile = fopen(findfile, "r");
             // Get the number of bytes
             fseek(infile, 0L, SEEK_END);
             numbytes = ftell(infile);
@@ -226,22 +227,32 @@ char* printContent(char *files)
             fread(buffer, sizeof(char), numbytes, infile);
             fclose(infile);
 
-            if(strcmp(filetype[1],"htm")==0 || strcmp(filetype[1],"html")==0) {
+            if(strcmp(filetype,"htm")==0 || strcmp(filetype,"html")==0) {
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: text/html\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype[1],"css")==0) {
+            } else if(strcmp(filetype,"css")==0) {
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: text/css\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype[1],"h")==0 || strcmp(filetype[1],"hh")==0) {
+            } else if(strcmp(filetype,"h")==0 || strcmp(filetype,"hh")==0) {
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-h\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype[1],"c")==0 || strcmp(filetype[1],"cc")==0) {
+            } else if(strcmp(filetype,"c")==0 || strcmp(filetype,"cc")==0) {
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: text/x-c\r\nServer: httpserver/1.x\r\n\r\n";
-            } else if(strcmp(filetype[1],"json")==0) {
+            } else if(strcmp(filetype,"json")==0) {
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: application/json\r\nServer: httpserver/1.x\r\n\r\n";
             }
-
             strcpy(hello,hell);
             strcat(hello,buffer);
             free(buffer);
             return hello;
         }
+        /*else {
+        	result = stat(dent->d_name, &buf);
+                    	if(__S_IFDIR & buf.st_mode){
+        		dir = opendir(dent->d_name);
+        	        dent=readdir(dir);
+        	}
+        }*/
+
     }
+    hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
+    strcpy(hello,hell);
+    return hello;
 }
