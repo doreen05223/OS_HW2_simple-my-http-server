@@ -159,13 +159,13 @@ char* printContent(char *files)
     for(int i=0; i<strlen(findfile[1]); i++) {
         findfile[1][i]=findfile[1][i+1];
     }
-    //printf("findfile: %s\n",findfile[1]);
 
     result = stat( findfile[1], &buf );
     //if id directory, print files under it
-    if(__S_IFDIR & buf.st_mode) {
+    //if(__S_IFDIR & buf.st_mode) {
+    if(result==0) {
         checkFile(findfile[1],filetype[1]);
-    } else { /* if(__S_IFREG & buf.st_mode)*/
+    } else { /* if(!(__S_IFDIR & buf.st_mode)){*/
         //get file type
         for(i=0; i<(strlen(findfile[1])); i++) {
             if(findfile[1][i]=='.') {
@@ -176,7 +176,6 @@ char* printContent(char *files)
                 jj++;
             }
         }
-        //printf("filetype: %s\n",filetype[1]);
 
         if(strcmp(filetype[1],"htm")!=0 && strcmp(filetype[1],"html")!=0 && strcmp(filetype[1],"css")!=0 && strcmp(filetype[1],"h")!=0 && strcmp(filetype[1],"hh")!=0 && strcmp(filetype[1],"c")!=0 && strcmp(filetype[1],"cc")!=0 && strcmp(filetype[1],"json")!=0) {
             hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
@@ -204,7 +203,8 @@ char *checkFile(char *findfile,char *filetype)
     while((dent=readdir(dir))!=NULL) {
         if(strcmp(dent->d_name,findfile)==0) {
             result = stat(findfile, &buf);
-            if(__S_IFDIR & buf.st_mode) {
+            if(result==0) {
+                //if(__S_IFDIR & buf.st_mode) {
                 dir = opendir(findfile);
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: directory\r\nServer: httpserver/1.x\r\n\r\n";
                 strcpy(hello,hell);
@@ -215,7 +215,7 @@ char *checkFile(char *findfile,char *filetype)
                     }
                 }
                 return hello;
-            } else if(__S_IFREG & buf.st_mode) {
+            } else if(result==-1) {
                 infile = fopen(findfile, "r");
                 // Get the number of bytes
                 fseek(infile, 0L, SEEK_END);
