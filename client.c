@@ -6,8 +6,8 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include<stdbool.h>
-
+#include <stdbool.h>
+#include <dirent.h>
 int main(int argc, char *argv[])
 {
     int sock = 0;
@@ -25,19 +25,7 @@ int main(int argc, char *argv[])
     strcat(hello,":");
     strcat(hello,port);
     strcat(hello,"\r\n\r\n");
-    /*
-        bool lock = 0;
-        char request[0xfff];
-        do{
-    	if(!isEmpty()){
-    		lock=1;
-    		strcpy(request,getQueue(Queue));
-    		Delete(Queue);
-    		lock=0;
-    	}
-        }while(lock);
-    */
-//    int PORT = atoi(argv[6]);
+    //int PORT = atoi(argv[6]);
     char buffer[1024] = {0};
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {

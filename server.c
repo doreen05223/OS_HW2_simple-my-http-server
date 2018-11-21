@@ -13,6 +13,7 @@
 #define MAX_QUEUE 50
 
 char* printContent(char *findfile);
+char *checkType(char *findfile, char *filetype, int det, char *address, char *rootaddress);
 char *checkFile(char *files, char *filetype, char *address, char *rootaddress);
 char hello[0xfff];
 char Queue[MAX_QUEUE][500];
@@ -38,7 +39,6 @@ void Add(char** Queue, char *item)
 //	printf("Circular Queue add: %s\n", item);
     rear = (rear + 1) % MAX_QUEUE;
     Queue[rear] = item;
-//	printf("%d\n",rear);
     if (front == rear) flag = 1;
 }
 
@@ -60,6 +60,7 @@ char *getQueue(char** Queue)
         return;
     }
     for (int i = 0; i < MAX_QUEUE; i++) {
+        printf("Queue: %s\n",Queue[i]);
         return Queue[i];
     }
 }
@@ -110,10 +111,14 @@ int main(int argc, char *argv[])
         while(1) {
             if(!isEmpty()) {
                 lock=1;
-                strcpy(request,getQueue(Queue));
-                Delete(Queue);
-                lock=0;
+                if(lock==1) {
+                    strcpy(request,getQueue(Queue));
+                    Delete(Queue);
+                    getQueue(Queue);
+                    lock=0;
+                }
                 printContent(request);
+                getQueue(Queue);
                 write(new_socket, hello, strlen(hello));
             } else break;
         }
@@ -160,31 +165,37 @@ char* printContent(char *files)
     }
 
     char *address=NULL;
+    int det=0;
     address = getcwd(NULL,0);
-//    printf("%s\n",address);
+    //printf("%s\n",address);
     result = stat( findfile[1], &buf );
-    //if(__S_IFDIR & buf.st_mode) {
+
     if(result==0) {
         checkFile(findfile[1],filetype[1],address,address);
-    } else { /* if(!(__S_IFDIR & buf.st_mode)){*/
+    } else {
         //get file type
         for(i=0; i<(strlen(findfile[1])); i++) {
             if(findfile[1][i]=='.') {
                 cctr++;
                 jj=0;
+                det=1;
             } else {
                 filetype[cctr][jj]=findfile[1][i];
                 jj++;
             }
         }
-        printf("filetype: %s\n",filetype[1]);
-        if(strcmp(filetype[1],"htm")!=0 && strcmp(filetype[1],"html")!=0 && strcmp(filetype[1],"css")!=0 && strcmp(filetype[1],"h")!=0 && strcmp(filetype[1],"hh")!=0 && strcmp(filetype[1],"c")!=0 && strcmp(filetype[1],"cc")!=0 && strcmp(filetype[1],"json")!=0) {
-            hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
-            strcpy(hello,hell);
-            return hello;
-        } else checkFile(findfile[1],filetype[1],address,address);
-    }
 
+        checkType(findfile[1], filetype[1],det,address,address);
+    }
+}
+
+char *checkType(char *findfile, char *filetype, int det, char *address, char *rootaddress)
+{
+    if(strcmp(filetype,"htm")!=0 && strcmp(filetype,"html")!=0 && strcmp(filetype,"css")!=0 && strcmp(filetype,"h")!=0 && strcmp(filetype,"hh")!=0 && strcmp(filetype,"c")!=0 && strcmp(filetype,"cc")!=0 && strcmp(filetype,"json")!=0 && det==1) {
+        char *hell = "HTTP/1.x 415 UNSUPPORT_MEDIA_TYPE\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
+        strcpy(hello,hell);
+        return hello;
+    } else checkFile(findfile,filetype,address,rootaddress);
 }
 
 char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
@@ -193,13 +204,14 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
     char *buffer;
     long numbytes;
     struct stat buf;
-    int result;
+    int result, ii, subnum=0;
     struct dirent *dent;
     char *hell;
-    char filename[30][30];
+    char filename[100][100];
     char add[1000]= {0};
     char *addr=NULL;
     DIR *dir;
+    //char printsub[100][100];
 
     for(int i=0; i<30; i++) {
         for(int j=0; j<30; j++) {
@@ -212,12 +224,13 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         result = stat(dent->d_name, &buf);
         if(result==0) {
             if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0 && dent->d_type==4) {
-                printf("file: %s\n",dent->d_name);
+                //printf("file: %s\n",dent->d_name);
                 strcpy(filename[0], dent->d_name);
             }
         }
 
         if(strcmp(dent->d_name,findfile)==0) {
+            //print directory
             if(dent->d_type==4) {
                 //if(__S_IFDIR & buf.st_mode) {
                 dir = opendir(findfile);
@@ -225,14 +238,21 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
                 strcpy(hello,hell);
                 while((dent=readdir(dir))!=NULL) {
                     if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0) {
+                        //strcpy(printsub[subnum],dent->d_name);
+                        //printf("printsub(while): %s\n",printsub[subnum]);
+                        //subnum++;
                         strcat(hello,dent->d_name);
                         strcat(hello," ");
                     }
                 }
-                int ii = chdir(rootaddress);
+
+                ii = chdir(rootaddress);
                 addr=getcwd(NULL,0);
+                strcat(hello,"\n");
                 return hello;
-            } else if(dent->d_type==8) {
+            }
+            //print file content
+            else if(dent->d_type==8) {
                 infile = fopen(findfile, "r");
                 // Get the number of bytes
                 fseek(infile, 0L, SEEK_END);
@@ -259,7 +279,7 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
                 strcpy(hello,hell);
                 strcat(hello,buffer);
                 free(buffer);
-                int ii = chdir(rootaddress);
+                ii = chdir(rootaddress);
                 addr=getcwd(NULL,0);
                 return hello;
             }
@@ -270,14 +290,13 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         strcpy(add,address);
         strcat(add,"/");
         strcat(add,filename[0]);
-        int ii = chdir(add);
+        ii = chdir(add);
         addr=getcwd(NULL,0);
-//    		printf("%s\n",addr);
         checkFile(findfile,filetype,addr,rootaddress);
     } else {
         hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
         strcpy(hello,hell);
-        int ii = chdir(rootaddress);
+        ii = chdir(rootaddress);
         addr=getcwd(NULL,0);
         return hello;
     }
