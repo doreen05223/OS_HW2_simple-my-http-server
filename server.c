@@ -1,21 +1,7 @@
 #include "server.h"
-#include <stdio.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <stdbool.h>
-#include <pthread.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#define PORT 8080
-#define MAX_QUEUE 50
 
-char* printContent(char *findfile);
-char *checkType(char *findfile, char *filetype, int det, char *address, char *rootaddress);
-char *checkFile(char *files, char *filetype, char *address, char *rootaddress);
 char hello[0xfff];
+char newrequest[0xfff];
 char Queue[MAX_QUEUE][500];
 int front = -1, rear = -1;
 bool flag = 0;
@@ -38,11 +24,12 @@ void Add(char** Queue, char *item)
     }
 //	printf("Circular Queue add: %s\n", item);
     rear = (rear + 1) % MAX_QUEUE;
+//    printf("rear: %d\n",rear);
     Queue[rear] = item;
     if (front == rear) flag = 1;
 }
 
-void Delete(char** Queue)
+char * Delete(char** Queue)
 {
     if (isEmpty() && flag == 0) {
 //		printf("Circular Queue is empty!\n");
@@ -50,18 +37,24 @@ void Delete(char** Queue)
     }
     front = (front + 1) % MAX_QUEUE;
 //	printf("%s is deleted.\n", Queue[front]);
+    Queue[front]=" ";
     if (front == rear) flag = 0;
 }
 
-char *getQueue(char** Queue)
+void *getQueue(char** Queue)
 {
     if (isEmpty() && flag==0) {
 //                printf("Queue is empty!\n");
         return;
     }
-    for (int i = 0; i < MAX_QUEUE; i++) {
+    /*for (int i = 0; i < MAX_QUEUE; i++) {
         printf("Queue: %s\n",Queue[i]);
-        return Queue[i];
+    }*/
+    for (int i = 0; i < MAX_QUEUE; i++) {
+        if(Queue[i]!=" "/* || Queue[i]!=NULL*/) {
+//		   printf("Queue: %s\n",Queue[i]);
+            return Queue[i];
+        }
     }
 }
 
@@ -118,11 +111,13 @@ int main(int argc, char *argv[])
                     lock=0;
                 }
                 printContent(request);
-                getQueue(Queue);
+                // getQueue(Queue);
                 write(new_socket, hello, strlen(hello));
             } else break;
         }
         pthread_join(t,NULL);
+        rear=-1;
+        front=-1;
         close(new_socket);
     }
     return 0;
@@ -198,7 +193,7 @@ char *checkType(char *findfile, char *filetype, int det, char *address, char *ro
     } else checkFile(findfile,filetype,address,rootaddress);
 }
 
-char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
+void checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
 {
     FILE *infile;
     char *buffer;
@@ -211,7 +206,7 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
     char add[1000]= {0};
     char *addr=NULL;
     DIR *dir;
-    //char printsub[100][100];
+    char printsub[100][100];
 
     for(int i=0; i<30; i++) {
         for(int j=0; j<30; j++) {
@@ -232,18 +227,32 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         if(strcmp(dent->d_name,findfile)==0) {
             //print directory
             if(dent->d_type==4) {
-                //if(__S_IFDIR & buf.st_mode) {
                 dir = opendir(findfile);
                 hell = "HTTP/1.x 200 OK\r\nContent-Type: directory\r\nServer: httpserver/1.x\r\n\r\n";
                 strcpy(hello,hell);
                 while((dent=readdir(dir))!=NULL) {
                     if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0) {
-                        //strcpy(printsub[subnum],dent->d_name);
+                        strcpy(printsub[subnum],dent->d_name);
                         //printf("printsub(while): %s\n",printsub[subnum]);
-                        //subnum++;
+                        subnum++;
                         strcat(hello,dent->d_name);
                         strcat(hello," ");
                     }
+                }
+                for(int i=0; i<subnum; i++) {
+                    char newrequest[0xfff];
+                    strcpy(newrequest,"GET ");
+                    strcat(newrequest,"/");
+                    strcat(newrequest,printsub[i]);
+                    strcat(newrequest," HTTP/1.x\r\nHost: ");
+                    strcat(newrequest,"127.0.0.1");
+                    strcat(newrequest,":");
+                    strcat(newrequest,"8080");
+                    strcat(newrequest,"\r\n\r\n");
+                    //printf("newreq: %s\n",newrequest);
+                    Add(Queue,newrequest);
+                    //printf("AddQ: ");
+                    //getQueue(Queue);
                 }
 
                 ii = chdir(rootaddress);
@@ -293,7 +302,7 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         strcat(add,filename[0]);
         ii = chdir(add);
         addr=getcwd(NULL,0);
-        printf("address: %s\n",addr);
+        //printf("address: %s\n",addr);
         checkFile(findfile,filetype,addr,rootaddress);
     } else {
         hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";
