@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-void saveContent(char *ffile, char *address, char *rootaddress, char *buffer);
+void saveContent(char *ffile, char *address, char *rootaddress);
 
 int main(int argc, char *argv[])
 {
@@ -84,13 +84,13 @@ int main(int argc, char *argv[])
         ffile[i]=ffile[i+1];
     }
 
-    saveContent(ffile,testaddress,address,buffer);
+    saveContent(ffile,testaddress,address);
     ii=chdir(rootaddress);
     addr=getcwd(NULL,0);
     return 0;
 }
 
-void saveContent(char *ffile, char *testaddress, char *outaddress, char *buffer)
+void saveContent(char *ffile, char *testaddress, char *outaddress)
 {
     FILE *file;
     struct stat buf;
@@ -101,6 +101,9 @@ void saveContent(char *ffile, char *testaddress, char *outaddress, char *buffer)
     char add[1000]= {0};
     char *addr=NULL;
     char location[1000]= {0};
+    FILE *infile;
+    char *buffer;
+    long numbytes;
 
     for(int i=0; i<30; i++) {
         for(int j=0; j<30; j++) {
@@ -118,11 +121,19 @@ void saveContent(char *ffile, char *testaddress, char *outaddress, char *buffer)
         }
         if(strcmp(dent->d_name,ffile)==0) {
             if(dent->d_type==8) {
+                infile = fopen(ffile, "r");
+                fseek(infile, 0L, SEEK_END);
+                numbytes = ftell(infile);
+                fseek(infile, 0L, SEEK_SET);
+                buffer = (char*)calloc(numbytes, sizeof(char));
+                fread(buffer, sizeof(char), numbytes, infile);
+                fclose(infile);
                 ii = chdir(outaddress);
                 addr = getcwd(NULL,0);
                 file = fopen(ffile,"w");
                 fprintf(file,"%s",buffer);
                 fclose(file);
+                free(buffer);
                 return;
             }
         }
@@ -138,6 +149,6 @@ void saveContent(char *ffile, char *testaddress, char *outaddress, char *buffer)
         }
         ii = chdir(add);
         addr=getcwd(NULL,0);
-        saveContent(ffile, addr, location, buffer);
+        saveContent(ffile, addr, location);
     } else return;
 }
