@@ -1,8 +1,8 @@
 #include "server.h"
 
 char hello[0xfff];
-char newrequest[0xfff];
-char Queue[MAX_QUEUE][500];
+//char newrequest[0xfff];
+char Queue[MAX_QUEUE][0xfff];
 int front = -1, rear = -1;
 bool flag = 0;
 
@@ -16,7 +16,7 @@ int isEmpty()
     return front == rear;
 }
 
-void Add(char** Queue, char *item)
+char *Add(char** Queue, char *item)
 {
     if(isFull() && flag == 1 || rear == MAX_QUEUE - 1 && front == -1) {
 //		printf("Circular Queue is full!\n");
@@ -24,12 +24,13 @@ void Add(char** Queue, char *item)
     }
 //	printf("Circular Queue add: %s\n", item);
     rear = (rear + 1) % MAX_QUEUE;
-//    printf("rear: %d\n",rear);
     Queue[rear] = item;
+//    printf("rear: %d %s\n",rear,Queue[rear]);
     if (front == rear) flag = 1;
+    // if(Queue[rear]!=" ") return Queue[rear];
 }
 
-char * Delete(char** Queue)
+void *Delete(char** Queue)
 {
     if (isEmpty() && flag == 0) {
 //		printf("Circular Queue is empty!\n");
@@ -41,23 +42,25 @@ char * Delete(char** Queue)
     if (front == rear) flag = 0;
 }
 
-void *getQueue(char** Queue)
+char *getQueue(char** Queue)
 {
     if (isEmpty() && flag==0) {
 //                printf("Queue is empty!\n");
         return;
     }
-    /*for (int i = 0; i < MAX_QUEUE; i++) {
-        printf("Queue: %s\n",Queue[i]);
-    }*/
     for (int i = 0; i < MAX_QUEUE; i++) {
-        if(Queue[i]!=" "/* || Queue[i]!=NULL*/) {
+        printf("Queue:%s\n",Queue[i]);
+    }
+    for (int i = 0; i < MAX_QUEUE; i++) {
+        if(Queue[i]!=" ") {
+//		printf("i:%d %s\n",i,Queue[i]);
 //		   printf("Queue: %s\n",Queue[i]);
+
             return Queue[i];
         }
     }
 }
-
+char newrequest[100][0xfff];
 int main(int argc, char *argv[])
 {
     int server_fd, new_socket;
@@ -97,10 +100,12 @@ int main(int argc, char *argv[])
 
         pthread_t t;
         Add(Queue,buffer);
+        getQueue(Queue);
         printf("%s\n",buffer);
         pthread_create(&t,NULL,getQueue,Queue);
         bool lock =0;
         char request[0xfff];
+        int i=0;
         while(1) {
             if(!isEmpty()) {
                 lock=1;
@@ -108,6 +113,7 @@ int main(int argc, char *argv[])
                     strcpy(request,getQueue(Queue));
                     Delete(Queue);
                     getQueue(Queue);
+                    //printf("after get\n");
                     lock=0;
                 }
                 printContent(request);
@@ -118,6 +124,11 @@ int main(int argc, char *argv[])
         pthread_join(t,NULL);
         rear=-1;
         front=-1;
+        /*for(int i=0;i<MAX_QUEUE;i++){
+        	for(int j=0;j<0xfff;j++){
+        		Queue[i][j]='0';
+        	}
+        }*/
         close(new_socket);
     }
     return 0;
@@ -193,7 +204,7 @@ char *checkType(char *findfile, char *filetype, int det, char *address, char *ro
     } else checkFile(findfile,filetype,address,rootaddress);
 }
 
-void checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
+char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
 {
     FILE *infile;
     char *buffer;
@@ -239,20 +250,22 @@ void checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
                         strcat(hello," ");
                     }
                 }
+                char newrequest[100][0xfff];
                 for(int i=0; i<subnum; i++) {
-                    char newrequest[0xfff];
-                    strcpy(newrequest,"GET ");
-                    strcat(newrequest,"/");
-                    strcat(newrequest,printsub[i]);
-                    strcat(newrequest," HTTP/1.x\r\nHost: ");
-                    strcat(newrequest,"127.0.0.1");
-                    strcat(newrequest,":");
-                    strcat(newrequest,"8080");
-                    strcat(newrequest,"\r\n\r\n");
-                    //printf("newreq: %s\n",newrequest);
-                    Add(Queue,newrequest);
+                    strcpy(newrequest[i],"GET ");
+                    strcat(newrequest[i],"/");
+                    strcat(newrequest[i],printsub[i]);
+                    strcat(newrequest[i]," HTTP/1.x\r\nHost: ");
+                    strcat(newrequest[i],"127.0.0.1");
+                    strcat(newrequest[i],":");
+                    strcat(newrequest[i],"8080");
+                    strcat(newrequest[i],"\r\n\r\n");
+                    printf("newreq: %s\n",newrequest[i]);
+                    Add(Queue,newrequest[i]);
+                    //printContent(newrequest);
                     //printf("AddQ: ");
-                    //getQueue(Queue);
+                    //getQueue(newrequest);
+                    //getQueue(Add(Queue,newrequest));
                 }
 
                 ii = chdir(rootaddress);

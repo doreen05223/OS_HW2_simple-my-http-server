@@ -17,6 +17,6 @@
 
 char* printContent(char *findfile);
 char *checkType(char *findfile, char *filetype, int det, char *address, char *rootaddress);
-void checkFile(char *files, char *filetype, char *address, char *rootaddress);
+char *checkFile(char *files, char *filetype, char *address, char *rootaddress);
 
 #endif
