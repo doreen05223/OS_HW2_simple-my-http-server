@@ -278,6 +278,7 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
                 }
                 strcpy(hello,hell);
                 strcat(hello,buffer);
+
                 free(buffer);
                 ii = chdir(rootaddress);
                 addr=getcwd(NULL,0);
@@ -292,6 +293,7 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         strcat(add,filename[0]);
         ii = chdir(add);
         addr=getcwd(NULL,0);
+        printf("address: %s\n",addr);
         checkFile(findfile,filetype,addr,rootaddress);
     } else {
         hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";

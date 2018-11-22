@@ -8,6 +8,10 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <dirent.h>
+#include <sys/stat.h>
+
+void saveContent(char *ffile, char *address, char *rootaddress, char *buffer);
+
 int main(int argc, char *argv[])
 {
     int sock = 0;
@@ -49,7 +53,91 @@ int main(int argc, char *argv[])
         return -1;
     }
     send(sock, hello, strlen(hello), 0 );
+
+    int ii;
+    char *addr=NULL;
+    char *address=NULL;
+    char *rootaddress=NULL;
+    char *testaddress=NULL;
+    char out[1000]= {0};
+    char test[1000]= {0};
+    rootaddress = getcwd(NULL,0);
+    mkdir("output",0777);
+    strcpy(out,rootaddress);
+    strcat(out,"/output");
+    ii = chdir(out);
+    address = getcwd(NULL,0);
+    mkdir("secfolder",0777);
+    strcat(out,"/secfolder");
+    ii = chdir(out);
+    addr = getcwd(NULL,0);
+    mkdir("trifolder",0777);
+    strcpy(test,rootaddress);
+    strcat(test,"/testdir");
+    ii=chdir(test);
+    testaddress = getcwd(NULL,0);
+
     valread = read( sock, buffer, 1024);
     printf("%s\n",buffer );
+
+    for(int i=0; i<strlen(ffile); i++) {
+        ffile[i]=ffile[i+1];
+    }
+
+    saveContent(ffile,testaddress,address,buffer);
+    ii=chdir(rootaddress);
+    addr=getcwd(NULL,0);
     return 0;
+}
+
+void saveContent(char *ffile, char *testaddress, char *outaddress, char *buffer)
+{
+    FILE *file;
+    struct stat buf;
+    int result, ii;
+    char filename[100][100];
+    struct dirent *dent;
+    DIR *dir;
+    char add[1000]= {0};
+    char *addr=NULL;
+    char location[1000]= {0};
+
+    for(int i=0; i<30; i++) {
+        for(int j=0; j<30; j++) {
+            filename[i][j]='0';
+        }
+    }
+
+    dir = opendir(testaddress);
+    while((dent=readdir(dir))!=NULL) {
+        result = stat(dent->d_name, &buf);
+        if(result==0) {
+            if(strcmp(dent->d_name,".")!=0 && strcmp(dent->d_name,"..")!=0 && dent->d_type==4) {
+                strcpy(filename[0], dent->d_name);
+            }
+        }
+        if(strcmp(dent->d_name,ffile)==0) {
+            if(dent->d_type==8) {
+                ii = chdir(outaddress);
+                addr = getcwd(NULL,0);
+                file = fopen(ffile,"w");
+                fprintf(file,"%s",buffer);
+                fclose(file);
+                return;
+            }
+        }
+    }
+    if(filename[0][0]!='0') {
+        strcpy(add,testaddress);
+        strcat(add,"/");
+        strcat(add,filename[0]);
+        strcpy(location,outaddress);
+        if(strcmp(filename[0],"testdir")!=0) {
+            strcat(location,"/");
+            strcat(location,filename[0]);
+        }
+        ii = chdir(add);
+        addr=getcwd(NULL,0);
+        saveContent(ffile, addr, location, buffer);
+    } else return;
 }
