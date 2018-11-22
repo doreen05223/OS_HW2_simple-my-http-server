@@ -1,8 +1,7 @@
 #include "server.h"
 
-char hello[0xfff];
-//char newrequest[0xfff];
-char Queue[MAX_QUEUE][0xfff];
+unsigned char hello[0xfff];
+unsigned char Queue[MAX_QUEUE][0xfff];
 int front = -1, rear = -1;
 bool flag = 0;
 
@@ -27,7 +26,6 @@ char *Add(char** Queue, char *item)
     Queue[rear] = item;
 //    printf("rear: %d %s\n",rear,Queue[rear]);
     if (front == rear) flag = 1;
-    // if(Queue[rear]!=" ") return Queue[rear];
 }
 
 void *Delete(char** Queue)
@@ -48,14 +46,12 @@ char *getQueue(char** Queue)
 //                printf("Queue is empty!\n");
         return;
     }
-    for (int i = 0; i < MAX_QUEUE; i++) {
+    /*for (int i = 0; i < MAX_QUEUE; i++) {
         printf("Queue:%s\n",Queue[i]);
-    }
+    }*/
     for (int i = 0; i < MAX_QUEUE; i++) {
         if(Queue[i]!=" ") {
 //		printf("i:%d %s\n",i,Queue[i]);
-//		   printf("Queue: %s\n",Queue[i]);
-
             return Queue[i];
         }
     }
@@ -64,7 +60,7 @@ char newrequest[100][0xfff];
 int main(int argc, char *argv[])
 {
     int server_fd, new_socket;
-    long valread;
+    long long valread;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
 
@@ -95,8 +91,8 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
 
-        char buffer[30000] = {0};
-        valread = read( new_socket, buffer, 30000);
+        char buffer[0xfff] = {0};
+        valread = read( new_socket, buffer, 0xfff);
 
         pthread_t t;
         Add(Queue,buffer);
@@ -113,7 +109,6 @@ int main(int argc, char *argv[])
                     strcpy(request,getQueue(Queue));
                     Delete(Queue);
                     getQueue(Queue);
-                    //printf("after get\n");
                     lock=0;
                 }
                 printContent(request);
@@ -124,11 +119,6 @@ int main(int argc, char *argv[])
         pthread_join(t,NULL);
         rear=-1;
         front=-1;
-        /*for(int i=0;i<MAX_QUEUE;i++){
-        	for(int j=0;j<0xfff;j++){
-        		Queue[i][j]='0';
-        	}
-        }*/
         close(new_socket);
     }
     return 0;
@@ -207,8 +197,8 @@ char *checkType(char *findfile, char *filetype, int det, char *address, char *ro
 char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress)
 {
     FILE *infile;
-    char *buffer;
-    long numbytes;
+    unsigned char *buffer;
+    long long numbytes;
     struct stat buf;
     int result, ii, subnum=0;
     struct dirent *dent;
@@ -262,10 +252,6 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
                     strcat(newrequest[i],"\r\n\r\n");
                     printf("newreq: %s\n",newrequest[i]);
                     Add(Queue,newrequest[i]);
-                    //printContent(newrequest);
-                    //printf("AddQ: ");
-                    //getQueue(newrequest);
-                    //getQueue(Add(Queue,newrequest));
                 }
 
                 ii = chdir(rootaddress);
@@ -315,7 +301,6 @@ char *checkFile(char *findfile, char *filetype, char *address, char *rootaddress
         strcat(add,filename[0]);
         ii = chdir(add);
         addr=getcwd(NULL,0);
-        //printf("address: %s\n",addr);
         checkFile(findfile,filetype,addr,rootaddress);
     } else {
         hell = "HTTP/1.x 404 NOT_FOUND\r\nContent-Type: \r\nServer: httpserver/1.x\r\n\r\n";

@@ -3,7 +3,7 @@
 int main(int argc, char *argv[])
 {
     int sock = 0;
-    long valread;
+    long long valread;
     struct sockaddr_in serv_addr;
     char *ffile = argv[2];
     char *Localhost = argv[4];
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     strcat(hello,port);
     strcat(hello,"\r\n\r\n");
     //int PORT = atoi(argv[6]);
-    char buffer[1024] = {0};
+    char buffer[0xfff] = {0};
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         printf("\n Socket creation error \n");
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     ii=chdir(test);
     testaddress = getcwd(NULL,0);
 
-    valread = read( sock, buffer, 1024);
+    valread = read( sock, buffer, 0xfff);
     printf("%s\n",buffer );
 
     for(int i=0; i<strlen(ffile); i++) {
@@ -90,8 +90,8 @@ void saveContent(char *ffile, char *testaddress, char *outaddress)
     char *addr=NULL;
     char location[1000]= {0};
     FILE *infile;
-    char *buffer;
-    long numbytes;
+    unsigned char *buffer;
+    long long numbytes;
 
     for(int i=0; i<30; i++) {
         for(int j=0; j<30; j++) {
